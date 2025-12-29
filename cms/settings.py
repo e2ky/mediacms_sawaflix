@@ -7,13 +7,13 @@ DEBUG = False
 
 # PORTAL NAME, this is the portal title and
 # is also shown on several places as emails
-PORTAL_NAME = "MediaCMS"
+PORTAL_NAME = "SawaFlix"
 PORTAL_DESCRIPTION = ""
-TIME_ZONE = "Europe/London"
+TIME_ZONE = "Africa/Nairobi"
 
 # who can add media
 # valid options include 'all', 'email_verified', 'advancedUser'
-CAN_ADD_MEDIA = "all"
+CAN_ADD_MEDIA = "advancedUser"
 
 # who can comment
 # valid options include 'all', 'email_verified', 'advancedUser'
@@ -31,13 +31,13 @@ DEFAULT_THEME = "light"
 # this is only for the static files, as fonts/css/js files loaded from CDNs
 # not for user uploaded media!
 LOAD_FROM_CDN = False
-LOGIN_ALLOWED = True  # whether the login button appears
-REGISTER_ALLOWED = True  # whether the register button appears
-UPLOAD_MEDIA_ALLOWED = True  # whether the upload media button appears
+LOGIN_ALLOWED = False  # whether the login button appears
+REGISTER_ALLOWED = False  # whether the register button appears
+UPLOAD_MEDIA_ALLOWED = False  # whether the upload media button appears
 CAN_LIKE_MEDIA = True  # whether the like media appears
 CAN_DISLIKE_MEDIA = True  # whether the dislike media appears
 CAN_REPORT_MEDIA = True  # whether the report media appears
-CAN_SHARE_MEDIA = True  # whether the share media appears
+CAN_SHARE_MEDIA = False  # whether the share media appears
 # how many times an item need be reported
 # to get to private state automatically
 REPORTED_TIMES_THRESHOLD = 10
