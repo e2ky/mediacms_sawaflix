@@ -8,7 +8,7 @@ DEBUG = False
 # PORTAL NAME, this is the portal title and
 # is also shown on several places as emails
 PORTAL_NAME = "SawaFlix"
-PORTAL_DESCRIPTION = ""
+PORTAL_DESCRIPTION = "SawaFlix"
 TIME_ZONE = "Africa/Nairobi"
 
 # who can add media
@@ -45,7 +45,7 @@ ALLOW_ANONYMOUS_ACTIONS = ["report", "like", "dislike", "watch"]  # need be a li
 
 # experimental functionality for user ratings - does not work
 ALLOW_RATINGS = False
-ALLOW_RATINGS_CONFIRMED_EMAIL_ONLY = True
+ALLOW_RATINGS_CONFIRMED_EMAIL_ONLY = False
 
 # ip of the server should be part of this
 ALLOWED_HOSTS = ["*", "mediacms.io", "127.0.0.1", "localhost"]
@@ -60,7 +60,7 @@ INTERNAL_IPS = "127.0.0.1"
 
 # settings that are related with UX/appearance
 # whether a featured item appears enlarged with player on index page
-VIDEO_PLAYER_FEATURED_VIDEO_ON_INDEX_PAGE = False
+VIDEO_PLAYER_FEATURED_VIDEO_ON_INDEX_PAGE = True
 
 PRE_UPLOAD_MEDIA_MESSAGE = ""
 
@@ -144,13 +144,13 @@ ACCOUNT_USERNAME_REQUIRED = True
 ACCOUNT_LOGIN_ON_PASSWORD_RESET = True
 ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 1
 # registration won't be open, might also consider to remove links for register
-USERS_CAN_SELF_REGISTER = True
+USERS_CAN_SELF_REGISTER = False
 
 RESTRICTED_DOMAINS_FOR_USER_REGISTRATION = ["xxx.com", "emaildomainwhatever.com"]
 
 # by default users do not need to be approved. If this is set to True, then new users
 # will have to be approved before they can login successfully
-USERS_NEEDS_TO_BE_APPROVED = False
+USERS_NEEDS_TO_BE_APPROVED = True
 
 # Comma separated list of domains:  ["organization.com", "private.organization.com", "org2.com"]
 # Empty list disables.
