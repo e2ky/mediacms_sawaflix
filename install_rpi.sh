@@ -1,226 +1,143 @@
-#!/usr/bin/env bash
-set -e
+#!/bin/bash
+# should be run as root and only on Ubuntu 20/22, Debian 10/11 (Buster/Bullseye) versions!
+echo "Welcome to the MediacMS installation!";
 
-#################################################
-# MediaCMS – Raspberry Pi OS (CM5)
-# Repo-local installer
-#################################################
-
-########################
-# Failure trap
-########################
-trap 'fail "FAILED at line $LINENO. See log: $LOG_FILE"; exit 1' ERR
-
-########################
-# Optional command tracing
-########################
-TRACE=0
-if [[ "$1" == "--trace" ]]; then
-  TRACE=1
-  shift
-fi
-[[ $TRACE -eq 1 ]] && set -x
-
-########################
-# Color definitions
-########################
-RED="\033[1;31m"
-GREEN="\033[1;32m"
-YELLOW="\033[1;33m"
-BLUE="\033[1;34m"
-NC="\033[0m"
-
-log()  { echo -e "${BLUE}▶ $*${NC}"; }
-ok()   { echo -e "${GREEN}✔ $*${NC}"; }
-warn() { echo -e "${YELLOW}⚠ $*${NC}"; }
-fail() { echo -e "${RED}✖ $*${NC}"; }
-
-stage() {
-  echo
-  echo -e "${BLUE}==============================${NC}"
-  echo -e "${BLUE}  $1${NC}"
-  echo -e "${BLUE}==============================${NC}"
-}
-
-########################
-# Dry-run handling
-########################
-DRY_RUN=0
-if [[ "$1" == "--dry-run" ]]; then
-  DRY_RUN=1
-  warn "Running in DRY-RUN mode"
+if [ `id -u` -ne 0 ]
+  then echo "Please run as root"
+  exit
 fi
 
-run() {
-  if [[ $DRY_RUN -eq 1 ]]; then
-    echo "[DRY-RUN] $*"
-  else
-    eval "$@"
-  fi
-}
 
-########################
-# Logging
-########################
-LOG_DIR="/var/log/mediacms"
-LOG_FILE="$LOG_DIR/install_$(date +%Y%m%d_%H%M%S).log"
-
-run "mkdir -p $LOG_DIR"
-run "chmod 755 $LOG_DIR"
-
-exec > >(tee -a "$LOG_FILE") 2>&1
-
-########################
-# Configuration
-########################
-TARGET_USER="${SUDO_USER:-$USER}"
-HOME_DIR="$(eval echo ~$TARGET_USER)"
-
-# Script lives inside the repo
-MEDIACMS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-VENV_DIR="$MEDIACMS_DIR/venv"
-STATIC_DIR="$MEDIACMS_DIR/static"
-
-SRC_DIR="/opt/src"
-MEDIA_MOUNT="/mnt/mediacms-media"
-
-FFMPEG_PREFIX="/usr/local"
-FFMPEG_SRC="$SRC_DIR/ffmpeg"
-FFMPEG_TAG="n6.1"
-
-########################
-# Guards
-########################
-stage "Environment validation"
-
-[[ $EUID -eq 0 ]] || fail "Run with sudo"
-mountpoint -q "$MEDIA_MOUNT" || fail "Media mount not present"
-
-[[ -f "$MEDIACMS_DIR/manage.py" ]] || fail "Script not run from MediaCMS repo"
-
-ok "Environment OK"
-ok "MediaCMS dir: $MEDIACMS_DIR"
-
-########################
-# Helpers
-########################
-install_pkg() {
-  dpkg -s "$1" >/dev/null 2>&1 || run "apt install -y $1"
-}
-
-########################
-# Base system
-########################
-stage "Base system packages"
-
-run "apt update"
-
-for pkg in git build-essential python3 python3-venv python3-dev \
-           redis-server postgresql postgresql-contrib libpq-dev \
-           imagemagick nginx; do
-  install_pkg "$pkg"
+while true; do
+    read -p "
+This script will attempt to perform a system update and install services including PostgreSQL, nginx and Django.
+It is expected to run on a new system **with no running instances of any these services**.
+This has been tested only in Ubuntu Linux 22 and 24. Make sure you check the script before you continue. Then enter yes or no
+" yn
+    case $yn in
+        [Yy]* ) echo "OK!"; break;;
+        [Nn]* ) echo "Have a great day"; exit;;
+        * ) echo "Please answer yes or no.";;
+    esac
 done
 
-run "systemctl enable redis-server postgresql"
-run "systemctl start redis-server postgresql"
+apt-get update && apt-get -y upgrade && apt-get install pkg-config python3-venv python3-dev virtualenv redis-server postgresql nginx git gcc vim unzip imagemagick procps libxml2-dev libxmlsec1-dev libxmlsec1-openssl python3-certbot-nginx certbot wget xz-utils -y
 
-ok "Base system ready"
+# install ffmpeg
+echo "Downloading and installing ffmpeg"
+# 
+# wget -q https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+# mkdir -p tmp
+# tar -xf ffmpeg-release-amd64-static.tar.xz --strip-components 1 -C tmp
+# cp -v tmp/{ffmpeg,ffprobe,qt-faststart} /usr/local/bin
+# rm -rf tmp ffmpeg-release-amd64-static.tar.xz
+#
+apt install -y ffmpeg
+echo "ffmpeg installed to /usr/local/bin"
 
-########################
-# Source directory
-########################
-stage "Source directory setup"
+read -p "Enter portal URL, or press enter for localhost : " FRONTEND_HOST
+read -p "Enter portal name, or press enter for 'MediaCMS : " PORTAL_NAME
 
-run "mkdir -p $SRC_DIR"
-run "chmod 755 $SRC_DIR"
+[ -z "$PORTAL_NAME" ] && PORTAL_NAME='SawaFlix'
+[ -z "$FRONTEND_HOST" ] && FRONTEND_HOST='localhost'
 
-########################
-# FFmpeg build
-########################
-stage "FFmpeg build ($FFMPEG_TAG)"
+echo 'Creating database to be used in MediaCMS'
 
-if [[ ! -x "$FFMPEG_PREFIX/bin/ffmpeg" ]]; then
-  for pkg in yasm nasm pkg-config libx264-dev libx265-dev \
-             libv4l-dev libdrm-dev libfreetype6-dev \
-             libfontconfig1-dev libass-dev; do
-    install_pkg "$pkg"
-  done
+su -c "psql -c \"CREATE DATABASE mediacms\"" postgres
+su -c "psql -c \"CREATE USER mediacms WITH ENCRYPTED PASSWORD 'mediacms'\"" postgres
+su -c "psql -c \"GRANT ALL PRIVILEGES ON DATABASE mediacms TO mediacms\"" postgres
+su -c "psql -d mediacms -c \"GRANT CREATE, USAGE ON SCHEMA public TO mediacms\"" postgres
 
-  run "[[ -d $FFMPEG_SRC ]] || git clone https://git.ffmpeg.org/ffmpeg.git $FFMPEG_SRC"
-  run "cd $FFMPEG_SRC"
-  run "git fetch --tags"
-  run "git checkout $FFMPEG_TAG"
+echo 'Creating python virtualenv on /home/mediacms.io'
 
-  run "./configure \
-    --prefix=$FFMPEG_PREFIX \
-    --enable-gpl \
-    --enable-libx264 \
-    --enable-libx265 \
-    --enable-libdrm \
-    --enable-v4l2 \
-    --enable-neon \
-    --enable-optimizations \
-    --enable-pthreads \
-    --disable-debug \
-    --disable-doc \
-    --disable-ffplay"
+cd /home/mediacms.io
+virtualenv . --python=python3
+source  /home/mediacms.io/bin/activate
+cd mediacms
+pip install --no-binary lxml,xmlsec -r requirements.txt
 
-  run "make -j$(nproc) V=1"
-  run "make install"
-  run "ldconfig"
+SECRET_KEY=`python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'`
 
-  ok "FFmpeg installed"
+# remove http or https prefix
+FRONTEND_HOST=`echo "$FRONTEND_HOST" | sed -r 's/http:\/\///g'`
+FRONTEND_HOST=`echo "$FRONTEND_HOST" | sed -r 's/https:\/\///g'`
+
+sed -i s/localhost/$FRONTEND_HOST/g deploy/local_install/mediacms.io
+
+FRONTEND_HOST_HTTP_PREFIX='http://'$FRONTEND_HOST
+
+echo 'FRONTEND_HOST='\'"$FRONTEND_HOST_HTTP_PREFIX"\' >> cms/local_settings.py
+echo 'PORTAL_NAME='\'"$PORTAL_NAME"\' >> cms/local_settings.py
+echo "SSL_FRONTEND_HOST = FRONTEND_HOST.replace('http', 'https')" >> cms/local_settings.py
+
+echo 'SECRET_KEY='\'"$SECRET_KEY"\' >> cms/local_settings.py
+echo "LOCAL_INSTALL = True" >> cms/local_settings.py
+
+mkdir logs
+mkdir pids
+python manage.py migrate
+python manage.py loaddata fixtures/encoding_profiles.json
+python manage.py loaddata fixtures/categories.json
+python manage.py collectstatic --noinput
+
+ADMIN_PASS=`python -c "import secrets;chars = 'abcdefghijklmnopqrstuvwxyz0123456789';print(''.join(secrets.choice(chars) for i in range(10)))"`
+echo "from users.models import User; User.objects.create_superuser('admin', 'admin@example.com', '$ADMIN_PASS')" | python manage.py shell
+
+echo "from django.contrib.sites.models import Site; Site.objects.update(name='$FRONTEND_HOST', domain='$FRONTEND_HOST')" | python manage.py shell
+
+chown -R www-data. /home/mediacms.io/
+cp deploy/local_install/celery_long.service /etc/systemd/system/celery_long.service && systemctl enable celery_long && systemctl start celery_long
+cp deploy/local_install/celery_short.service /etc/systemd/system/celery_short.service && systemctl enable celery_short && systemctl start celery_short
+cp deploy/local_install/celery_beat.service /etc/systemd/system/celery_beat.service && systemctl enable celery_beat &&systemctl start celery_beat
+cp deploy/local_install/mediacms.service /etc/systemd/system/mediacms.service && systemctl enable mediacms.service && systemctl start mediacms.service
+
+mkdir -p /etc/letsencrypt/live/mediacms.io/
+mkdir -p /etc/letsencrypt/live/$FRONTEND_HOST
+mkdir -p /etc/nginx/sites-enabled
+mkdir -p /etc/nginx/sites-available
+mkdir -p /etc/nginx/dhparams/
+rm -rf /etc/nginx/conf.d/default.conf
+rm -rf /etc/nginx/sites-enabled/default
+cp deploy/local_install/mediacms.io_fullchain.pem /etc/letsencrypt/live/$FRONTEND_HOST/fullchain.pem
+cp deploy/local_install/mediacms.io_privkey.pem /etc/letsencrypt/live/$FRONTEND_HOST/privkey.pem
+cp deploy/local_install/dhparams.pem /etc/nginx/dhparams/dhparams.pem
+cp deploy/local_install/mediacms.io /etc/nginx/sites-available/mediacms.io
+ln -s /etc/nginx/sites-available/mediacms.io /etc/nginx/sites-enabled/mediacms.io
+cp deploy/local_install/uwsgi_params /etc/nginx/sites-enabled/uwsgi_params
+cp deploy/local_install/nginx.conf /etc/nginx/
+systemctl stop nginx
+systemctl start nginx
+
+# attempt to get a valid certificate for specified domain
+
+if [ "$FRONTEND_HOST" != "localhost" ]; then
+    echo 'attempt to get a valid certificate for specified url $FRONTEND_HOST'
+    certbot --nginx -n --agree-tos --register-unsafely-without-email -d $FRONTEND_HOST
+    certbot --nginx -n --agree-tos --register-unsafely-without-email -d $FRONTEND_HOST
+    # unfortunately for some reason it needs to be run two times in order to create the entries
+    # and directory structure!!!
+    systemctl restart nginx
 else
-  ok "FFmpeg already present"
+    echo "will not call certbot utility to update ssl certificate for url 'localhost', using default ssl certificate"
 fi
 
-########################
-# Python environment
-########################
-stage "Python virtual environment"
+# Generate individual DH params
+if [ "$FRONTEND_HOST" != "localhost" ]; then
+    # Only generate new DH params when using "real" certificates.
+    openssl dhparam -out /etc/nginx/dhparams/dhparams.pem 4096
+    systemctl restart nginx
+else
+    echo "will not generate new DH params for url 'localhost', using default DH params"
+fi
 
-run "[[ -d $VENV_DIR ]] || sudo -u $TARGET_USER python3 -m venv $VENV_DIR"
+# Bento4 utility installation, for HLS
 
-run "sudo -u $TARGET_USER bash -c '
-  source $VENV_DIR/bin/activate
-  pip install --upgrade pip wheel
-  pip install -r requirements.txt
-'"
+cd /home/mediacms.io/mediacms
+wget http://zebulon.bok.net/Bento4/binaries/Bento4-SDK-1-6-0-637.x86_64-unknown-linux.zip
+unzip Bento4-SDK-1-6-0-637.x86_64-unknown-linux.zip
+mkdir /home/mediacms.io/mediacms/media_files/hls
 
-ok "Python environment ready"
+# last, set default owner
+chown -R www-data. /home/mediacms.io/
 
-########################
-# Media directories
-########################
-stage "Media directories"
-
-run "mkdir -p $MEDIA_MOUNT/{uploads,thumbnails,previews,transcoded,tmp}"
-run "chown -R www-data:www-data $MEDIA_MOUNT"
-run "chmod -R 750 $MEDIA_MOUNT"
-
-########################
-# Django setup
-########################
-stage "Django initialization"
-
-run "sudo -u $TARGET_USER bash -c '
-  cd $MEDIACMS_DIR
-  source $VENV_DIR/bin/activate
-  python manage.py migrate
-  python manage.py collectstatic --noinput
-'"
-
-run "chmod -R 755 $STATIC_DIR"
-
-########################
-# Summary
-########################
-stage "Installation complete"
-
-ok "Code   : $MEDIACMS_DIR"
-ok "Static : $STATIC_DIR"
-ok "Media  : $MEDIA_MOUNT"
-ok "Log    : $LOG_FILE"
-echo
-
+echo 'MediaCMS installation completed, open browser on http://'"$FRONTEND_HOST"' and login with user admin and password '"$ADMIN_PASS"''
