@@ -1,146 +1,87 @@
 #!/usr/bin/env bash
 set -e
-set -o pipefail
 
-echo "============================================"
-echo " MediaCMS UNINSTALL SCRIPT"
-echo "============================================"
-echo
-echo "⚠ WARNING:"
-echo "This will REMOVE MediaCMS, FFmpeg, databases,"
-echo "services, configs, and related system packages."
-echo
-read -p "Type UNINSTALL to continue: " CONFIRM
-[[ "$CONFIRM" == "UNINSTALL" ]] || exit 1
+echo "=========================================="
+echo " MediaCMS FULL UNINSTALL"
+echo " Removes MediaCMS + system dependencies"
+echo "=========================================="
 
-############################
-# Root check
-############################
-if [[ $EUID -ne 0 ]]; then
+if [ "$EUID" -ne 0 ]; then
   echo "Run as root"
   exit 1
 fi
 
-############################
-# Stop and disable services
-############################
-systemctl stop mediacms.service || true
-systemctl disable mediacms.service || true
+read -p "THIS WILL REMOVE PostgreSQL, nginx, Redis, ffmpeg. Continue? (y/N): " CONFIRM
+if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
+  echo "Aborted."
+  exit 0
+fi
 
-systemctl stop celery_long celery_short celery_beat || true
-systemctl disable celery_long celery_short celery_beat || true
+echo "Stopping services..."
+systemctl stop mediacms celery celerybeat nginx postgresql redis-server || true
 
-systemctl stop nginx || true
-systemctl stop redis-server || true
-systemctl stop postgresql || true
+echo "Disabling MediaCMS services..."
+systemctl disable mediacms celery celerybeat || true
 
-############################
-# Remove systemd units
-############################
+echo "Removing systemd service files..."
 rm -f /etc/systemd/system/mediacms.service
-rm -f /etc/systemd/system/celery_long.service
-rm -f /etc/systemd/system/celery_short.service
-rm -f /etc/systemd/system/celery_beat.service
-
+rm -f /etc/systemd/system/celery.service
+rm -f /etc/systemd/system/celerybeat.service
 systemctl daemon-reload
 
-############################
-# Remove nginx configuration
-############################
-rm -f /etc/nginx/sites-enabled/mediacms.io
-rm -f /etc/nginx/sites-available/mediacms.io
-rm -f /etc/nginx/nginx.conf
-rm -f /etc/nginx/sites-enabled/uwsgi_params
-rm -rf /etc/letsencrypt/live/*
-rm -rf /etc/letsencrypt/archive/*
-rm -rf /etc/letsencrypt/renewal/*
+echo "Removing nginx configs..."
+rm -rf /etc/nginx/sites-enabled/*
+rm -rf /etc/nginx/sites-available/*
+rm -rf /etc/nginx/conf.d/*
+rm -rf /etc/nginx/snippets/*
+rm -rf /etc/letsencrypt
+rm -rf /var/lib/letsencrypt
+rm -rf /var/www/html
 
-############################
-# Remove MediaCMS files
-############################
-rm -rf /home/mediacms.io
+echo "Removing MediaCMS app files..."
+rm -rf /opt/mediacms
+rm -rf /var/www/mediacms
+rm -rf /var/media/mediacms
 
-############################
-# Remove PostgreSQL database and user
-############################
-sudo -u postgres psql <<EOF || true
-DROP DATABASE IF EXISTS mediacms;
-DROP USER IF EXISTS mediacms;
-EOF
+echo "Removing Bento4 tools..."
+rm -rf /opt/bento4
+rm -rf /usr/local/bin/mp4*
 
-############################
-# Remove FFmpeg (custom build)
-############################
-rm -f /usr/bin/ffmpeg /usr/bin/ffprobe
-rm -f /usr/local/bin/ffmpeg /usr/local/bin/ffprobe
-rm -rf /usr/local/lib/libav*
-rm -rf /usr/local/include/libav*
-rm -rf /opt/src/ffmpeg
+echo "Clearing Redis data..."
+rm -rf /var/lib/redis
+rm -rf /etc/redis
 
-ldconfig
+echo "Removing PostgreSQL data..."
+rm -rf /var/lib/postgresql
+rm -rf /etc/postgresql
+rm -rf /etc/postgresql-common
+rm -rf /var/log/postgresql
 
-############################
-# Remove Bento4
-############################
-rm -rf /home/mediacms.io/mediacms/Bento4*
+echo "Removing logs..."
+rm -rf /var/log/nginx
+rm -rf /var/log/mediacms
+rm -rf /var/log/celery*
 
-############################
-# Remove packages installed by MediaCMS
-############################
+echo "Uninstalling system packages..."
 apt-get purge -y \
-  nginx \
-  redis-server \
-  postgresql \
-  postgresql-contrib \
-  python3-venv \
-  python3-dev \
-  virtualenv \
-  imagemagick \
-  certbot \
-  python3-certbot-nginx \
-  libxml2-dev \
-  libxmlsec1-dev \
-  libxmlsec1-openssl \
-  pkg-config \
-  gcc \
-  git \
-  unzip \
-  wget \
-  xz-utils \
-  procps || true
+  nginx nginx-common nginx-core \
+  postgresql postgresql-* \
+  redis-server redis-tools \
+  ffmpeg \
 
-############################
-# Remove FFmpeg build dependencies
-############################
-apt-get purge -y \
-  yasm \
-  nasm \
-  libx264-dev \
-  libx265-dev \
-  libv4l-dev \
-  libdrm-dev \
-  libfreetype6-dev \
-  libfontconfig1-dev \
-  libass-dev || true
-
-############################
-# Autoremove leftovers
-############################
+echo "Autoremoving unused dependencies..."
 apt-get autoremove -y
 apt-get autoclean -y
 
-############################
-# Final message
-############################
-echo
-echo "============================================"
-echo " MediaCMS uninstall COMPLETE"
-echo "============================================"
-echo
-echo "Remaining items NOT removed:"
-echo "- System users (www-data, postgres)"
-echo "- Kernel packages"
-echo "- apt cache outside autoclean"
-echo
-echo "Reboot recommended."
+echo "Removing mediacms user (if exists)..."
+id mediacms &>/dev/null && userdel -r mediacms || true
+
+echo "Clearing pip caches..."
+rm -rf /root/.cache/pip
+rm -rf /home/*/.cache/pip
+
+echo "=========================================="
+echo "FULL UNINSTALL COMPLETE"
+echo "System is ready for a fresh install"
+echo "=========================================="
 
