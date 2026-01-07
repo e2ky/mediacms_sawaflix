@@ -25,14 +25,17 @@ apt-get update && apt-get -y upgrade && apt-get install pkg-config python3-venv 
 
 # install ffmpeg
 echo "Downloading and installing ffmpeg"
-# 
-# wget -q https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
-# mkdir -p tmp
-# tar -xf ffmpeg-release-amd64-static.tar.xz --strip-components 1 -C tmp
-# cp -v tmp/{ffmpeg,ffprobe,qt-faststart} /usr/local/bin
-# rm -rf tmp ffmpeg-release-amd64-static.tar.xz
+ 
+wget -q https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+mkdir -p tmp
+tar -xf ffmpeg-release-amd64-static.tar.xz --strip-components 1 -C tmp
+cp -v tmp/{ffmpeg,ffprobe,qt-faststart} /usr/local/bin
+rm -rf tmp ffmpeg-release-amd64-static.tar.xz
+
 #
-apt install -y ffmpeg
+# apt install -y ffmpeg
+# 
+
 echo "ffmpeg installed to /usr/local/bin"
 
 read -p "Enter portal URL, or press enter for localhost : " FRONTEND_HOST
