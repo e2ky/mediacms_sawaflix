@@ -1,5 +1,8 @@
 #!/bin/bash
-# should be run as root and only on Ubuntu 20/22, Debian 10/11 (Buster/Bullseye) versions!
+# should be run as root and only on Rasbperry Pi running Raspbian!
+
+set -eux
+
 echo "Welcome to the MediacMS installation!";
 
 if [ `id -u` -ne 0 ]
@@ -12,7 +15,7 @@ while true; do
     read -p "
 This script will attempt to perform a system update and install services including PostgreSQL, nginx and Django.
 It is expected to run on a new system **with no running instances of any these services**.
-This has been tested only in Ubuntu Linux 22 and 24. Make sure you check the script before you continue. Then enter yes or no
+This has been tested only Raspberry Pi Compute Module 5 running Raspbian. Make sure you check the script before you continue. Then enter yes or no
 " yn
     case $yn in
         [Yy]* ) echo "OK!"; break;;
@@ -23,16 +26,22 @@ done
 
 apt-get update && apt-get -y upgrade && apt-get install pkg-config python3-venv python3-dev virtualenv redis-server postgresql nginx git gcc vim unzip imagemagick procps libxml2-dev libxmlsec1-dev libxmlsec1-openssl python3-certbot-nginx certbot wget xz-utils -y
 
+###################################################################################################
 # install ffmpeg
+###################################################################################################
+
 echo "Downloading and installing ffmpeg"
-# 
-# wget -q https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
-# mkdir -p tmp
-# tar -xf ffmpeg-release-amd64-static.tar.xz --strip-components 1 -C tmp
-# cp -v tmp/{ffmpeg,ffprobe,qt-faststart} /usr/local/bin
-# rm -rf tmp ffmpeg-release-amd64-static.tar.xz
+ 
+wget -q https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-arm64-static.tar.xz
+mkdir -p tmp
+tar -xf ffmpeg-release-arm64-static.tar.xz --strip-components 1 -C tmp
+cp -v tmp/{ffmpeg,ffprobe,qt-faststart} /usr/local/bin
+rm -rf tmp ffmpeg-release-arm64-static.tar.xz
+
 #
-apt install -y ffmpeg
+# apt install -y ffmpeg
+#
+
 echo "ffmpeg installed to /usr/local/bin"
 
 read -p "Enter portal URL, or press enter for localhost : " FRONTEND_HOST
@@ -85,7 +94,7 @@ echo "from users.models import User; User.objects.create_superuser('admin', 'adm
 
 echo "from django.contrib.sites.models import Site; Site.objects.update(name='$FRONTEND_HOST', domain='$FRONTEND_HOST')" | python manage.py shell
 
-chown -R www-data. /home/mediacms.io/
+chown -R www-data /home/mediacms.io/
 cp deploy/local_install/celery_long.service /etc/systemd/system/celery_long.service && systemctl enable celery_long && systemctl start celery_long
 cp deploy/local_install/celery_short.service /etc/systemd/system/celery_short.service && systemctl enable celery_short && systemctl start celery_short
 cp deploy/local_install/celery_beat.service /etc/systemd/system/celery_beat.service && systemctl enable celery_beat &&systemctl start celery_beat
@@ -138,6 +147,6 @@ unzip Bento4-SDK-1-6-0-637.x86_64-unknown-linux.zip
 mkdir /home/mediacms.io/mediacms/media_files/hls
 
 # last, set default owner
-chown -R www-data. /home/mediacms.io/
+chown -R www-data /home/mediacms.io/
 
 echo 'MediaCMS installation completed, open browser on http://'"$FRONTEND_HOST"' and login with user admin and password '"$ADMIN_PASS"''
