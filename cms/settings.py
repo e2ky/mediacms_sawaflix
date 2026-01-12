@@ -117,10 +117,10 @@ SITE_ID = 1
 # PORTAL_LOGO_DARK_SVG = ""
 # PORTAL_LOGO_LIGHT_SVG = ""
 # place the files on static/images folder
-PORTAL_LOGO_DARK_SVG = "/static/images/logo_dark.svg"
-PORTAL_LOGO_DARK_PNG = "/static/images/logo_dark.png"
-PORTAL_LOGO_LIGHT_SVG = "/static/images/logo_light.svg"
-PORTAL_LOGO_LIGHT_PNG = "/static/images/logo_dark.png"
+#PORTAL_LOGO_DARK_SVG = "/static/images/logo_dark.svg"
+PORTAL_LOGO_DARK_PNG = "/static/images/logo_dark_sawaflix.png"
+#PORTAL_LOGO_LIGHT_SVG = "/static/images/logo_light.svg"
+PORTAL_LOGO_LIGHT_PNG = "/static/images/logo_dark_sawaflix.png"
 
 # paths to extra css files to be included, eg "/static/css/custom.css"
 # place css inside static/css folder
