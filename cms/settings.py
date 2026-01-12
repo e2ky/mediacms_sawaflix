@@ -180,7 +180,7 @@ STATIC_URL = "/static/"  # where js/css files are stored on the filesystem
 MEDIA_URL = "/media/"  # URL where static files are served from the server
 STATIC_ROOT = BASE_DIR + "/static/"
 # where uploaded + encoded media are stored
-MEDIA_ROOT = BASE_DIR + "/media_files/"
+MEDIA_ROOT = "/mnt/mediacms-media/media_files/"
 
 # these used to be os.path.join(MEDIA_ROOT, "folder/") but update to
 # Django 3.1.9 requires not absolute paths to be utilized...
