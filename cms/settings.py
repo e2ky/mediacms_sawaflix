@@ -210,7 +210,7 @@ CHUNKIZE_VIDEO_DURATION = 60 * 5
 VIDEO_CHUNKS_DURATION = 60 * 4
 
 # always get these two, even if upscaling
-MINIMUM_RESOLUTIONS_TO_ENCODE = [144, 240]
+MINIMUM_RESOLUTIONS_TO_ENCODE = [720, 1080]
 
 # default settings for notifications
 # not all of them are implemented
