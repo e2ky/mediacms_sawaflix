@@ -88,7 +88,7 @@ echo "from users.models import User; User.objects.create_superuser('admin', 'adm
 
 echo "from django.contrib.sites.models import Site; Site.objects.update(name='$FRONTEND_HOST', domain='$FRONTEND_HOST')" | python manage.py shell
 
-chown -R www-data. /home/mediacms.io/
+chown -R www-data /home/mediacms.io/
 cp deploy/local_install/celery_long.service /etc/systemd/system/celery_long.service && systemctl enable celery_long && systemctl start celery_long
 cp deploy/local_install/celery_short.service /etc/systemd/system/celery_short.service && systemctl enable celery_short && systemctl start celery_short
 cp deploy/local_install/celery_beat.service /etc/systemd/system/celery_beat.service && systemctl enable celery_beat &&systemctl start celery_beat
@@ -141,6 +141,6 @@ unzip Bento4-SDK-1-6-0-637.x86_64-unknown-linux.zip
 mkdir /home/mediacms.io/mediacms/media_files/hls
 
 # last, set default owner
-chown -R www-data. /home/mediacms.io/
+chown -R www-data /home/mediacms.io/
 
 echo 'MediaCMS installation completed, open browser on http://'"$FRONTEND_HOST"' and login with user admin and password '"$ADMIN_PASS"''

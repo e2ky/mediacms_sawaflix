@@ -180,7 +180,7 @@ STATIC_URL = "/static/"  # where js/css files are stored on the filesystem
 MEDIA_URL = "/media/"  # URL where static files are served from the server
 STATIC_ROOT = BASE_DIR + "/static/"
 # where uploaded + encoded media are stored
-MEDIA_ROOT = "/mnt/mediacms-media/media_files/"
+MEDIA_ROOT = BASE_DIR + "/media_files/"
 
 # these used to be os.path.join(MEDIA_ROOT, "folder/") but update to
 # Django 3.1.9 requires not absolute paths to be utilized...
@@ -210,7 +210,7 @@ CHUNKIZE_VIDEO_DURATION = 60 * 5
 VIDEO_CHUNKS_DURATION = 60 * 4
 
 # always get these two, even if upscaling
-MINIMUM_RESOLUTIONS_TO_ENCODE = [720, 1080]
+MINIMUM_RESOLUTIONS_TO_ENCODE = [144, 240]
 
 # default settings for notifications
 # not all of them are implemented
@@ -462,7 +462,7 @@ if os.environ.get("TESTING"):
     CELERY_TASK_ALWAYS_EAGER = True
 
 # if True, only show original, don't perform any action on videos
-DO_NOT_TRANSCODE_VIDEO = False
+DO_NOT_TRANSCODE_VIDEO = True
 
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
